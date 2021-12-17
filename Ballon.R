@@ -21,6 +21,10 @@ names(diplomado)[18] <- "TIEMPO_JUGADO"
 
 
 partidos_jugados = diplomado %>% count(JUGADOR)
+names(partidos_jugados)[2] <- "TOTAL_PARTIDOS"
+
+promedio_gol = data.frame(round(datos_nominados$TOTAL_GOLES / datos_nominados$TOTAL_PARTIDOS,2))
+names(promedio_gol)[1] <- "PROMEDIO_GOL"
 
 
 
@@ -33,8 +37,11 @@ datos_nominados = diplomado %>% filter(JUGADOR %in% c("Kante","Jorginho","Lionel
                                                       "Ruben Dias","Simon Kjaer")) %>% group_by(JUGADOR)%>%summarise (TOTAL_GOLES = sum(GOLES),TOTAL_ASISTENCIAS = sum(ASISTENCIAS),TOTAL_TA = sum(TARJETA_AMARILLA),TOTAL_STA = sum(SEGUNDA_AMARILLA),
                                                       TOTAL_ROJAS = sum(TARJETA_ROJA),TOTAL_TIEMPO_JUGADO = sum(TIEMPO_JUGADO))
 
+datos_nominados$TOTAL_PARTIDOS = partidos_jugados$TOTAL_PARTIDOS
+datos_nominados$PROMEDIO_GOL = promedio_gol$PROMEDIO_GOL
 
-promedio_gol = data.frame(partidos_jugados$n / datos_nominados$TOTAL_GOLES)
+
+
 
 
 finalistas = diplomado %>% filter(JUGADOR %in% c("Kante","Jorginho","Lionel Messi","Karim Benzema","Robert Lewandowski"))
