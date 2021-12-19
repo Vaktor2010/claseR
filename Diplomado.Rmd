@@ -1,0 +1,272 @@
+---
+title: "Balón de Oro 2021"
+author: "Víctor Martínez"
+date: "19/12/2021"
+output: html_document
+---
+### Definición del problema: 
+
+Concluir a través del estudio de los datos de los partidos del 2021 de los 30 nominados al “Balón de oro 2021”, si fue merecido el ganador.
+
+### Justificación: 
+
+Este estudio sobre los treinta (30) nominados al premio del “Balón de Oro” 20-21 y más a profundidad sobre los cinco (5) finalistas, buscara aclarar si los datos analizados para llegar a la conclusión tomada por los 180 periodistas, fue razonable o si por alguna razón ajena a los datos estadísticos dados, pesa más el criterio personal en el premio entregado por la revista “France Football”.
+
+Eso debido a que existe la polémica que en muchas ocasiones el ganador no es justo (caso en particular el de este año), y no se juzgan con manera objetiva los aspectos que deben ser valorados indicando que el papel subjetivo de la votación en función del gusto de cada periodista por el nominado no debería influir en su voto final ya que se han de tener en cuenta otros factores. El primero es el estado de forma mostrado durante la temporada, donde entran estadísticas como los goles, partidos, influencia en el juego, etc. El segundo factor son los títulos colectivos logrados durante el año natural en curso, tanto de clubes como de selecciones. Aquí entra en valor la importancia del jugador dentro del equipo a la hora de obtener el título. El último factor a tener en cuenta es la imagen pública del jugador, tanto dentro como fuera del campo donde entran en juego el Fair Play del jugador o los actos filantrópicos de la persona.
+
+### Visualización del problema y su justificación con estadísticas descriptivas:
+
+El principal problema que se ha presentado a través de los años, es que la decisión final que se toma en cuanto al ganador, siempre ha generado polémicas, ya que a nivel mundial, sin importar el año y el ganador, se genera expectativa de que el premio debió ser entregado a otro jugador, polémica que ha aumentado en los últimos 14 años, donde el deporte se ha visto “glorificado” con los 2 mejores jugadores de nuestra época (para muchos de la historia), los cuales se han llevado el galardón más importante a nivel individual en el mundo del futbol en 12 ocasiones. 
+
+Con esta investigación, se quiere demostrar si el ganador de este año es el correcto, a través del estudio de datos recolectados y su respectivo análisis.
+Datos que fueron obtenidos de la siguiente fuente: https://www.kaggle.com/vaske93/fifa-ballon-dor-2021-nominees
+
+### Hipótesis: 
+
+¿Sera que la decisión de cada uno de los 180 periodistas que votan por el ganador del balón de oro si es basada en los factores que deben tener en cuenta, o es mas subjetiva a su gusto personal?
+
+### Estudio de los datos:
+
+Las variables principales las cuales analizamos para la realización de este trabajo fueron las siguientes:
+
+- Cantidad de goles anotados por jugador
+- Cantidad de asistencias
+- Cantidad de tarjetas recibidas (juego limpio)
+- Minutos jugados
+- Tipo de competencia
+ 
+### Las librerias que usamos para este trabajo fueron: 
+ 
+```{r}
+
+library(fmsb)
+library(DT)
+library(ggplot2)
+library(tidyverse)
+
+```
+
+A continuación, mostraremos nuestra base de datos inicial.
+
+```{r}
+
+
+diplomado <- read.csv("~/diplomado/diplomado.csv", encoding="UTF-8", sep=";", stringsAsFactors=TRUE)
+DT :: datatable (diplomado)
+
+```
+Luego de exportar la base de datos toco realizarle ciertas modificaciones para un mejor análisis de los datos, así como algunas estéticas: 
+
+-La primera fue realizar el cambio del tipo de dato de la coluna “MARCADOR”, cambio realizado para poder realizar el siguiente paso, el cual fue poder crear las dos columnas indicando el marcador del equipo visitante, así como el del local. 
+
+```{r}
+
+diplomado$MARCADOR = as.character(diplomado$MARCADOR)
+diplomado = separate(diplomado,"MARCADOR",c("MARCADOR_LOCAL","MARCADOR_VISITANTE"), sep = ":",F )  
+str(diplomado$MARCADOR)  
+diplomado$MARCADOR_VISITANTE = substr(diplomado$MARCADOR_VISITANTE,2,2)  
+
+```
+
+-Luego se renombraron varias columnas para la mayor comprensión del lector, ya que el trabajo fue diseñado para que lo entienda todo tipo de personas y no solo los que saben del tema, entonces se les podría dificultar, la lectura de las nomenclaturas. 
+
+```{r}
+names(diplomado)[1] <- "JUGADOR"
+names(diplomado)[13] <- "TARJETA_AMARILLA"
+names(diplomado)[14] <- "SEGUNDA_AMARILLA"
+names(diplomado)[15] <- "TARJETA_ROJA"
+names(diplomado)[16] <- "MIN_INICIAL"
+names(diplomado)[17] <- "MIN_FINAL"
+names(diplomado)[18] <- "TIEMPO_JUGADO"
+
+```
+
+Continuamos separando los datos para una mejor lectura y análisis de la siguiente manera; en primer lugar se hizo una concatenación de los datos, por futbolista, y las principales ligas en las que participaron con su respectivo club, incluyendo las competencias internacionales en que participo cada uno.
+
+```{r}
+ligas = c("LEAGUE 1","SERIE A","PREMIER LEAGUE","LA LIGA","BUNDESLIGA","UEFA CHAMPIONS LEAGUE","EUROPA LEAGUE")
+
+lista_ligas = list()
+
+for (comp in ligas) {
+  
+  
+  
+  datos_nominados = diplomado %>% filter(COMPETENCIA == comp) %>%  group_by(JUGADOR) %>% summarise(TOTAL_GOLES = sum(GOLES),
+                                                                                                   TOTAL_PARTIDOS = n(),
+                                                                                                   TOTAL_ASISTENCIAS = sum(ASISTENCIAS),
+                                                                                                   TOTAL_TA = sum(TARJETA_AMARILLA),
+                                                                                                   TOTAL_STA = sum(SEGUNDA_AMARILLA),
+                                                                                                   TOTAL_ROJAS = sum(TARJETA_ROJA),
+                                                                                                   TOTAL_TIEMPO_JUGADO = sum(TIEMPO_JUGADO)) %>% mutate(PROMEDIO_GOL = round(TOTAL_GOLES / TOTAL_PARTIDOS,2))  
+  str(datos_nominados)
+  lista_ligas[[comp]] = datos_nominados
+  
+}
+
+
+base_ligas = do.call("rbind",lista_ligas)
+
+base_ligas = base_ligas %>%  group_by(JUGADOR) %>% summarise(TOTAL_GOLES = sum(TOTAL_GOLES),
+                                                                                                 TOTAL_PARTIDOS = n(),
+                                                                                                 TOTAL_ASISTENCIAS = sum(TOTAL_ASISTENCIAS),
+                                                                                                 TOTAL_TA = sum(TOTAL_TA),
+                                                                                                 TOTAL_STA = sum(TOTAL_STA),
+                                                                                                 TOTAL_ROJAS = sum(TOTAL_ROJAS),
+                                                                                                 TOTAL_TIEMPO_JUGADO = sum(TOTAL_TIEMPO_JUGADO)) %>% mutate(PROMEDIO_GOL = round(TOTAL_GOLES / TOTAL_PARTIDOS,2))
+
+```
+
+En el código anterior podemos encontrar la forma en que redujimos una base de datos de mas de mil filas y 19 columnas a una de tan solo 30 filas y 9 columnas con la información suficiente necesaria para nuestro análisis a nivel selección.
+
+A continuación, mostraremos como queda la base de datos indicada: 
+
+```{r}
+base_ligas
+
+```
+
+Luego al igual que como hicimos con cada jugador a nivel liga, realizamos el mismo procedimiento, pero a nivel selección de los postulados.
+
+```{r}
+selecciones = c("EURO 2020","ELIMINATORIAS MUNDIALISTAS","COPA AMERICA")
+
+lista_selecciones = list()
+
+for (comp in selecciones) {
+  
+  
+  
+  datos_nominados = diplomado %>% filter(COMPETENCIA == comp) %>%  group_by(JUGADOR) %>% summarise(TOTAL_GOLES = sum(GOLES),
+                                                                                                   TOTAL_PARTIDOS = n(),
+                                                                                                   TOTAL_ASISTENCIAS = sum(ASISTENCIAS),
+                                                                                                   TOTAL_TA = sum(TARJETA_AMARILLA),
+                                                                                                   TOTAL_STA = sum(SEGUNDA_AMARILLA),
+                                                                                                   TOTAL_ROJAS = sum(TARJETA_ROJA),
+                                                                                                   TOTAL_TIEMPO_JUGADO = sum(TIEMPO_JUGADO)) %>% mutate(PROMEDIO_GOL = round(TOTAL_GOLES / TOTAL_PARTIDOS,2))  
+  str(datos_nominados)
+  lista_selecciones[[comp]] = datos_nominados
+  
+}
+
+
+
+
+base_selecciones = do.call("rbind",lista_selecciones)
+
+base_selecciones = base_selecciones %>%  group_by(JUGADOR) %>% summarise(TOTAL_GOLES = sum(TOTAL_GOLES),
+                                                             TOTAL_PARTIDOS = n(),
+                                                             TOTAL_ASISTENCIAS = sum(TOTAL_ASISTENCIAS),
+                                                             TOTAL_TA = sum(TOTAL_TA),
+                                                             TOTAL_STA = sum(TOTAL_STA),
+                                                             TOTAL_ROJAS = sum(TOTAL_ROJAS),
+                                                             TOTAL_TIEMPO_JUGADO = sum(TOTAL_TIEMPO_JUGADO)) %>% mutate(PROMEDIO_GOL = round(TOTAL_GOLES / TOTAL_PARTIDOS,2))
+
+
+```
+
+Dándonos como resultado la siguiente base de datos.
+
+```{r}
+base_selecciones
+
+```
+
+Luego para la concatenación de la información obtenida en ambas base de datos, lo primero que hacemos es renombrar los datos de cada una de las bases, de tal forma que nos indique cual dato corresponde a que tipo de competición.
+
+```{r}
+
+names(base_ligas) = paste0(names(base_ligas),"_liga")
+names(base_selecciones) = paste0(names(base_selecciones),"_selecciones")
+
+```
+
+Ahora finalmente unimos las bases obtenidas para tener todos los datos necesarios parra el análisis; donde podemos realizar las siguientes aclaraciones:
+
+Los jugadores que son excluidos, son de poca relevancia para el estudio ya que o son defensas, un arquero, o no hicieron nada relevante con su selección. 
+
+Y nuevamente rebautizamos la columna nombre, en la base total  ya que viene con el nombre otorgado por la base_ligas, para dejarlo simplemente con la indicación “JUGADOR”
+
+```{r}
+
+base_total = left_join(base_ligas, base_selecciones, by = c("JUGADOR_liga" = "JUGADOR_selecciones")) %>% filter(!JUGADOR_liga %in% c("Riyad Mahrez","Mohamed Salah","Giorgio Chiellini","Gianluigi Donnarumma","Cesar Azpilicueta"))
+
+base_total = base_total %>% select(-c(TOTAL_TA_liga,TOTAL_STA_liga,TOTAL_ROJAS_liga,TOTAL_TA_selecciones,TOTAL_STA_selecciones,TOTAL_ROJAS_selecciones))
+
+names(base_total)[1] <- "JUGADOR"
+
+```
+
+Y así obtenemos la base de datos definitiva con la información requerida
+
+```{r}
+
+base_total
+
+```
+
+Ahora analizamos los datos de los jugadores:
+
+```{r}
+
+ggplot(base_total, aes(x = TOTAL_GOLES_liga, y = JUGADOR)) + geom_col(fill= "red") 
+
+ggplot(base_total, aes(x = TOTAL_GOLES_selecciones, y = JUGADOR)) + geom_col(fill ="green") 
+
+ggplot(base_total, aes(x = TOTAL_GOLES_liga, y = TOTAL_GOLES_selecciones, color = JUGADOR)) + geom_point()
+
+ggplot(base_total, aes(x = TOTAL_GOLES_selecciones, y = JUGADOR)) + geom_col(aes(fill =(TOTAL_GOLES_liga), position = "dodge")) 
+
+radarchart(base_total ) 
+
+```
+
+Luego de esto analizamos los datos de los 5 finalistas.
+
+```{r}
+
+finalistas = base_total %>% filter(JUGADOR %in% c("Lionel Messi", "Robert Lewandowski" , "Jorginho" , "Karim Benzema" , "Kante"))
+
+finalistas
+
+ggplot(finalistas, aes(x = TOTAL_GOLES_liga, y = JUGADOR)) + geom_col(fill= "yellow") 
+
+ggplot(finalistas, aes(x = TOTAL_GOLES_selecciones, y = JUGADOR)) + geom_col(fill= "blue")
+
+ggplot(finalistas, aes(x = TOTAL_GOLES_liga, y = TOTAL_GOLES_selecciones, color = JUGADOR)) + geom_point()
+
+```
+
+Se puede entender porque Messi y Lewabdowski quedaron en las 2 primeras posiciones, ya que son los jugadores que tienen los mejores datos a nivel liga y selección combinados, por tal motivo ahora realizaremos el análisis en ambos jugadores. 
+
+```{r}
+
+mejores = finalistas %>% filter(JUGADOR %in% c("Lionel Messi", "Robert Lewandowski"))
+
+mejores
+
+ggplot(mejores, aes(x = TOTAL_GOLES_liga, y = JUGADOR)) + geom_col(fill= "yellow") 
+
+ggplot(mejores, aes(x = TOTAL_GOLES_selecciones, y = JUGADOR)) + geom_col(fill= "blue")
+
+```
+
+### Conclusión:
+
+Como los datos lo demuestran, Robert Lewandowski, obtuvo mejores resultados que Leonel Messi, en cuanto a de ligas e incluso obtuvieron casi los mismos resultados a nivel de selecciones.
+
+El punto determinante para dar como ganador a Messi fueron los logros obtenidos por sus respectivas selecciones, ya que la selección argentina de Messi gano la Copa América y esta con una gran posibilidad de clasificarse al mundial, mientras que la selección de Polonia de Lewandowski, quedo eliminada en la fase de grupos de la Euro copa y sus posibilidades de clasificarse al mundial son escasas.
+
+En conclusión y debido a los resultados obtenidos el ganador es el indicado. 
+
+
+
+
+
+
+
+
+
+
+
+
